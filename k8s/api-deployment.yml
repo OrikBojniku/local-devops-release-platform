@@ -19,15 +19,11 @@ spec:
           imagePullPolicy: Never
           ports:
             - containerPort: 5000
-          env:
-            - name: DB_HOST
-              value: "postgres"
-            - name: DB_NAME
-              value: "devops_db"
-            - name: DB_USER
-              value: "postgres"
-            - name: DB_PASSWORD
-              value: "postgres"
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: app-secret
           resources:
             requests:
               memory: "64Mi"
