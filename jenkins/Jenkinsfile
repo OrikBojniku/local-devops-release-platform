@@ -119,11 +119,11 @@ pipeline {
             steps {
                 echo '🎯 Faza 9: Duke promovuar ne Stage...'
                 sh """
-                    kubectl apply -f k8s/configmap.yml -n ${K8S_NAMESPACE_STAGE} || true
-                    kubectl apply -f k8s/secret.yml -n ${K8S_NAMESPACE_STAGE} || true
-                    kubectl apply -f k8s/postgres-deployment.yml -n ${K8S_NAMESPACE_STAGE} || true
-                    kubectl apply -f k8s/api-deployment.yml -n ${K8S_NAMESPACE_STAGE} || true
-                    kubectl apply -f k8s/worker-deployment.yml -n ${K8S_NAMESPACE_STAGE} || true
+                    kubectl apply -f k8s/configmap-stage.yml
+                    kubectl apply -f k8s/secret-stage.yml
+                    kubectl apply -f k8s/postgres-deployment-stage.yml
+                    kubectl apply -f k8s/api-deployment-stage.yml
+                    kubectl apply -f k8s/worker-deployment-stage.yml
                     kubectl rollout status deployment/api -n ${K8S_NAMESPACE_STAGE}
                 """
                 echo '✅ Promovimi ne Stage perfundoi!'

@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: stage
+data:
+  DB_HOST: "postgres"
+  DB_NAME: "devops_db"
+  DB_USER: "postgres"
