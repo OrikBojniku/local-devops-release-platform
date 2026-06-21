@@ -38,7 +38,7 @@ resource "docker_volume" "jenkins_data" {
   name = "jenkins-data"
 }
 
-# Kontejneri Jenkins
+# Kontejneri Jenkins me Docker socket
 resource "docker_container" "jenkins" {
   name  = "devops-jenkins"
   image = "jenkins/jenkins:lts"
@@ -56,6 +56,12 @@ resource "docker_container" "jenkins" {
   volumes {
     volume_name    = docker_volume.jenkins_data.name
     container_path = "/var/jenkins_home"
+  }
+
+  # Docker socket per akses te Docker i hostit
+  volumes {
+    host_path      = "/var/run/docker.sock"
+    container_path = "/var/run/docker.sock"
   }
 
   networks_advanced {
