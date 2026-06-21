@@ -1,0 +1,17 @@
+---
+- name: Verifiko nese Kind eshte instaluar
+  command: kind version
+  register: kind_check
+  ignore_errors: true
+  changed_when: false
+
+- name: Instalo Kind nese mungon
+  shell: |
+    curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
+    chmod +x ./kind
+    mv ./kind /usr/local/bin/kind
+  when: kind_check.rc != 0
+
+- name: Verifiko instalimin e Kind
+  command: kind version
+  changed_when: false

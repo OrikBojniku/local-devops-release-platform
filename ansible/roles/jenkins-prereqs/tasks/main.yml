@@ -1,0 +1,23 @@
+---
+- name: Verifiko nese Jenkins kontejneri po punon
+  command: docker inspect devops-jenkins --format="{{ "{{" }}.State.Running{{ "}}" }}"
+  register: jenkins_check
+  ignore_errors: true
+  changed_when: false
+
+- name: Shfaq statusin e Jenkins
+  debug:
+    msg: "Jenkins eshte aktiv dhe po punon"
+  when: jenkins_check.stdout == "true"
+
+- name: Paralajmero nese Jenkins nuk po punon
+  debug:
+    msg: "KUJDES: Jenkins nuk po punon - ekzekuto terraform apply"
+  when: jenkins_check.rc != 0 or jenkins_check.stdout != "true"
+
+- name: Verifiko portat e Jenkins
+  wait_for:
+    host: localhost
+    port: 8080
+    timeout: 10
+  ignore_errors: true

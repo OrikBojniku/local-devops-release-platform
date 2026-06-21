@@ -1,0 +1,10 @@
+---
+- name: Setup Local DevOps Environment
+  hosts: local
+  become: true
+
+  roles:
+    - docker
+    - kubectl
+    - kind
+    - jenkins-prereqs

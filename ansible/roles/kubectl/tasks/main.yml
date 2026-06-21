@@ -1,0 +1,17 @@
+---
+- name: Verifiko nese kubectl eshte instaluar
+  command: kubectl version --client
+  register: kubectl_check
+  ignore_errors: true
+  changed_when: false
+
+- name: Instalo kubectl nese mungon
+  shell: |
+    curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+    install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+    rm kubectl
+  when: kubectl_check.rc != 0
+
+- name: Verifiko instalimin e kubectl
+  command: kubectl version --client
+  changed_when: false

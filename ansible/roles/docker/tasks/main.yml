@@ -1,0 +1,16 @@
+---
+- name: Verifiko nese Docker eshte instaluar
+  command: docker --version
+  register: docker_check
+  ignore_errors: true
+  changed_when: false
+
+- name: Shfaq statusin e Docker
+  debug:
+    msg: "Docker eshte instaluar: {{ docker_check.stdout }}"
+  when: docker_check.rc == 0
+
+- name: Paralajmero nese Docker mungon
+  debug:
+    msg: "KUJDES: Docker nuk eshte instaluar!"
+  when: docker_check.rc != 0
