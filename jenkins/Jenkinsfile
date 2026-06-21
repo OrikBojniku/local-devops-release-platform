@@ -1,0 +1,159 @@
+pipeline {
+    agent any
+
+    environment {
+        REGISTRY = "localhost:5001"
+        API_IMAGE = "${REGISTRY}/api"
+        WORKER_IMAGE = "${REGISTRY}/worker"
+        K8S_NAMESPACE_DEV = "dev"
+        K8S_NAMESPACE_STAGE = "stage"
+    }
+
+    stages {
+
+        // FAZA 1: Checkout
+        stage('Checkout') {
+            steps {
+                echo '📥 Faza 1: Duke marre kodin nga GitHub...'
+                checkout scm
+                echo '✅ Kodi u mor me sukses!'
+            }
+        }
+
+        // FAZA 2: Lint & Unit Tests
+        stage('Lint & Unit Tests') {
+            parallel {
+                stage('Test API') {
+                    steps {
+                        echo '🧪 Duke testuar API Service...'
+                        sh '''
+                            cd api
+                            pip install pytest flask psycopg2-binary --quiet
+                            pytest test_app.py -v
+                        '''
+                    }
+                }
+                stage('Test Worker') {
+                    steps {
+                        echo '🧪 Duke testuar Worker Service...'
+                        sh '''
+                            cd worker
+                            pip install pytest psycopg2-binary --quiet
+                            pytest test_worker.py -v
+                        '''
+                    }
+                }
+            }
+        }
+
+        // FAZA 3: Build Docker Images
+        stage('Build Docker Images') {
+            steps {
+                echo '🔨 Faza 3: Duke ndertuar imazhet Docker...'
+                sh """
+                    docker build -t ${API_IMAGE}:${BUILD_NUMBER} -t ${API_IMAGE}:latest ./api
+                    docker build -t ${WORKER_IMAGE}:${BUILD_NUMBER} -t ${WORKER_IMAGE}:latest ./worker
+                """
+                echo '✅ Imazhet u ndertuan!'
+            }
+        }
+
+        // FAZA 4: Security Scan
+        stage('Security Scan (Trivy)') {
+            steps {
+                echo '🔒 Faza 4: Duke skanuar sigurine...'
+                sh """
+                    trivy image --exit-code 0 --severity HIGH,CRITICAL ${API_IMAGE}:latest
+                    trivy image --exit-code 0 --severity HIGH,CRITICAL ${WORKER_IMAGE}:latest
+                """
+                echo '✅ Skanimi i sigurise perfundoi!'
+            }
+        }
+
+        // FAZA 5: Push Images
+        stage('Push Images to Registry') {
+            steps {
+                echo '📤 Faza 5: Duke ngarkuar imazhet ne registry...'
+                sh """
+                    docker push ${API_IMAGE}:${BUILD_NUMBER}
+                    docker push ${API_IMAGE}:latest
+                    docker push ${WORKER_IMAGE}:${BUILD_NUMBER}
+                    docker push ${WORKER_IMAGE}:latest
+                """
+                echo '✅ Imazhet u ngarkuan!'
+            }
+        }
+
+        // FAZA 6: Deploy to Dev
+        stage('Deploy to Dev') {
+            steps {
+                echo '🚀 Faza 6: Duke vendosur ne namespace dev...'
+                sh """
+                    kubectl apply -f k8s/configmap.yml
+                    kubectl apply -f k8s/secret.yml
+                    kubectl apply -f k8s/postgres-deployment.yml
+                    kubectl apply -f k8s/api-deployment.yml
+                    kubectl apply -f k8s/worker-deployment.yml
+                    kubectl rollout status deployment/api -n ${K8S_NAMESPACE_DEV}
+                    kubectl rollout status deployment/worker -n ${K8S_NAMESPACE_DEV}
+                """
+                echo '✅ Deploy ne dev perfundoi!'
+            }
+        }
+
+        // FAZA 7: Smoke Tests
+        stage('Smoke Tests') {
+            steps {
+                echo '💨 Faza 7: Duke bere smoke tests...'
+                sh """
+                    sleep 10
+                    kubectl exec -n ${K8S_NAMESPACE_DEV} \
+                        \$(kubectl get pod -n ${K8S_NAMESPACE_DEV} -l app=api -o jsonpath='{.items[0].metadata.name}') \
+                        -- curl -f http://localhost:5000/health
+                """
+                echo '✅ Smoke tests kaluan!'
+            }
+        }
+
+        // FAZA 8: Manual Approval
+        stage('Manual Approval') {
+            steps {
+                echo '⏳ Faza 8: Duke pritur aprovimin manual...'
+                input message: 'A duam te promovojme ne Stage?',
+                      ok: 'Po, promovo!',
+                      submitter: 'admin'
+            }
+        }
+
+        // FAZA 9: Promote to Stage
+        stage('Promote to Stage') {
+            steps {
+                echo '🎯 Faza 9: Duke promovuar ne Stage...'
+                sh """
+                    kubectl apply -f k8s/configmap.yml -n ${K8S_NAMESPACE_STAGE} || true
+                    kubectl apply -f k8s/secret.yml -n ${K8S_NAMESPACE_STAGE} || true
+                    kubectl apply -f k8s/postgres-deployment.yml -n ${K8S_NAMESPACE_STAGE} || true
+                    kubectl apply -f k8s/api-deployment.yml -n ${K8S_NAMESPACE_STAGE} || true
+                    kubectl apply -f k8s/worker-deployment.yml -n ${K8S_NAMESPACE_STAGE} || true
+                    kubectl rollout status deployment/api -n ${K8S_NAMESPACE_STAGE}
+                """
+                echo '✅ Promovimi ne Stage perfundoi!'
+            }
+        }
+    }
+
+    // FAZA 10: Rollback on Failure
+    post {
+        failure {
+            echo '❌ Pipeline deshtoi - duke bere rollback...'
+            sh """
+                kubectl rollout undo deployment/api -n ${K8S_NAMESPACE_DEV} || true
+                kubectl rollout undo deployment/worker -n ${K8S_NAMESPACE_DEV} || true
+            """
+            echo '✅ Rollback perfundoi!'
+        }
+        success {
+            echo '🎉 Pipeline perfundoi me sukses!'
+        }
+    }
+}
