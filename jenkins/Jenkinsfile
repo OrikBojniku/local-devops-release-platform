@@ -100,7 +100,7 @@ pipeline {
                     sleep 10
                     kubectl exec -n ${K8S_NAMESPACE_DEV} \
                         \$(kubectl get pod -n ${K8S_NAMESPACE_DEV} -l app=api -o jsonpath='{.items[0].metadata.name}') \
-                        -- curl -f http://localhost:5000/health
+                        -- python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"
                 """
                 echo '✅ Smoke tests kaluan!'
             }
