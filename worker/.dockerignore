@@ -1,0 +1,10 @@
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+.env
+.git
+.gitkeep
+test_*.py
+*.md
